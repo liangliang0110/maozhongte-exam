@@ -41,9 +41,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Microsoft YaHei","PingFang SC
 .opt-label{display:flex;align-items:flex-start;gap:8px;padding:7px 10px;border-radius:6px;cursor:pointer;border:1.5px solid transparent;transition:all .15s}
 .opt-label:hover{background:#fdf5f5}
 .opt-letter{flex-shrink:0;width:26px;height:26px;border-radius:50%;background:#f0ebe0;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:.82em;color:#888;transition:all .15s}
-input:checked+.opt-letter{background:#b22222;color:#fff}
+.opt-label.selected{border-color:#b22222;background:#fdf5f5}
+.opt-label.selected .opt-letter{background:#b22222;color:#fff}
 .opt-text{flex:1;font-size:.92em}
-input[type="radio"],input[type="checkbox"]{position:absolute;opacity:0;pointer-events:none;width:0;height:0}
 /* 即时反馈高亮选项 */
 .opt-label.correct-opt{border-color:#52c41a;background:#f6ffed}
 .opt-label.correct-opt .opt-letter{background:#52c41a;color:#fff}
@@ -149,18 +149,17 @@ function renderExam() {
 
 function renderSingle(q, num) {
   var labels = 'ABCD';
-  var h = '<div class="q-card" id="qCard-' + num + '" data-answered="0">';
+  var h = '<div class="q-card" id="qCard-' + num + '" data-answered="0" data-answer="' + q.a + '">';
   h += '<div><span class="q-num">' + num + '.</span><span class="q-status" id="qStatus-' + num + '"></span>';
   h += '<span class="q-text">' + escapeHtml(q.q) + '</span></div>';
   h += '<div class="q-feedback" id="qFb-' + num + '"></div>';
   h += '<div class="options">';
   for (var i = 0; i < 4; i++) {
     if (q.o[i]) {
-      h += '<label class="opt-label" id="opt-' + num + '-' + labels[i] + '">';
-      h += '<input type="radio" name="q' + num + '" value="' + labels[i] + '" data-answer="' + q.a + '">';
+      h += '<div class="opt-label" data-q="' + num + '" data-val="' + labels[i] + '" data-type="radio">';
       h += '<span class="opt-letter">' + labels[i] + '</span>';
       h += '<span class="opt-text">' + escapeHtml(q.o[i]) + '</span>';
-      h += '</label>';
+      h += '</div>';
     }
   }
   h += '</div></div>';
@@ -169,18 +168,17 @@ function renderSingle(q, num) {
 
 function renderMulti(q, num) {
   var labels = 'ABCD';
-  var h = '<div class="q-card" id="qCard-' + num + '" data-answered="0">';
+  var h = '<div class="q-card" id="qCard-' + num + '" data-answered="0" data-answer="' + q.a + '">';
   h += '<div><span class="q-num">' + num + '.</span><span class="q-status" id="qStatus-' + num + '"></span>';
   h += '<span class="q-text">' + escapeHtml(q.q) + '</span></div>';
   h += '<div class="q-feedback" id="qFb-' + num + '"></div>';
   h += '<div class="options">';
   for (var i = 0; i < 4; i++) {
     if (q.o[i]) {
-      h += '<label class="opt-label" id="opt-' + num + '-' + labels[i] + '">';
-      h += '<input type="checkbox" name="q' + num + '" value="' + labels[i] + '" data-answer="' + q.a + '">';
+      h += '<div class="opt-label" data-q="' + num + '" data-val="' + labels[i] + '" data-type="checkbox">';
       h += '<span class="opt-letter">' + labels[i] + '</span>';
       h += '<span class="opt-text">' + escapeHtml(q.o[i]) + '</span>';
-      h += '</label>';
+      h += '</div>';
     }
   }
   h += '</div></div>';
@@ -236,31 +234,26 @@ function markCard(num, isCorrect, userAns, correctAns, type) {
   updateAnsweredStatus();
 }
 
-function highlightOptions(num, correctAns, userAns, type, optCount) {
+function highlightOptions(num, correctAns, userAns, type) {
   var labels = 'ABCD';
   // 清除之前的样式
-  for (var i = 0; i < optCount; i++) {
-    var opt = document.getElementById('opt-' + num + '-' + labels[i]);
-    if (opt) {
-      opt.classList.remove('correct-opt', 'wrong-opt');
-    }
+  for (var i = 0; i < 4; i++) {
+    var opt = document.querySelector('.opt-label[data-q="' + num + '"][data-val="' + labels[i] + '"]');
+    if (opt) opt.classList.remove('correct-opt', 'wrong-opt');
   }
 
   // 高亮正确选项
   for (var j = 0; j < correctAns.length; j++) {
-    var cOpt = document.getElementById('opt-' + num + '-' + correctAns[j]);
+    var cOpt = document.querySelector('.opt-label[data-q="' + num + '"][data-val="' + correctAns[j] + '"]');
     if (cOpt) cOpt.classList.add('correct-opt');
   }
 
-  // 高亮错误选项（用户选错的）
-  if (type === 'single' && userAns && userAns !== correctAns) {
-    var wOpt = document.getElementById('opt-' + num + '-' + userAns);
-    if (wOpt && !correctAns.includes(userAns)) wOpt.classList.add('wrong-opt');
-  } else if (type === 'multi') {
+  // 高亮用户选错的选项
+  if (userAns) {
     for (var k = 0; k < userAns.length; k++) {
       if (!correctAns.includes(userAns[k])) {
-        var wOpt2 = document.getElementById('opt-' + num + '-' + userAns[k]);
-        if (wOpt2) wOpt2.classList.add('wrong-opt');
+        var wOpt = document.querySelector('.opt-label[data-q="' + num + '"][data-val="' + userAns[k] + '"]');
+        if (wOpt) wOpt.classList.add('wrong-opt');
       }
     }
   }
@@ -270,23 +263,21 @@ function checkSingle(num, userAns, correctAns) {
   if (submitted) return;
   var isCorrect = userAns === correctAns;
   markCard(num, isCorrect, userAns, correctAns, 'single');
-  highlightOptions(num, correctAns, userAns, 'single', 4);
-
-  // 判断题错误选项也要高亮（无选项，在tf btn处处理）
+  highlightOptions(num, correctAns, userAns, 'single');
 }
 
 function checkMulti(num, correctAns) {
   if (submitted) return;
-  var cbs = document.querySelectorAll('input[name="q' + num + '"]:checked');
+  // 收集所有选中的选项
+  var selected = document.querySelectorAll('.opt-label.selected[data-q="' + num + '"]');
   var userAns = [];
-  cbs.forEach(function(cb) { userAns.push(cb.value); });
+  selected.forEach(function(s) { userAns.push(s.dataset.val); });
   userAns.sort();
   var userStr = userAns.join('');
   var isCorrect = userStr === correctAns;
 
-  // 只有选了至少一个才显示反馈
+  // 没选任何项时清空反馈
   if (userStr.length === 0) {
-    // 清空反馈
     var card = document.getElementById('qCard-' + num);
     card.classList.remove('correct', 'wrong');
     card.dataset.answered = '0';
@@ -294,7 +285,7 @@ function checkMulti(num, correctAns) {
     document.getElementById('qFb-' + num).classList.remove('correct-fb', 'wrong-fb', 'show');
     var labels = 'ABCD';
     for (var i = 0; i < 4; i++) {
-      var opt = document.getElementById('opt-' + num + '-' + labels[i]);
+      var opt = document.querySelector('.opt-label[data-q="' + num + '"][data-val="' + labels[i] + '"]');
       if (opt) opt.classList.remove('correct-opt', 'wrong-opt');
     }
     updateAnsweredStatus();
@@ -302,7 +293,7 @@ function checkMulti(num, correctAns) {
   }
 
   markCard(num, isCorrect, userStr, correctAns, 'multi');
-  highlightOptions(num, correctAns, userStr, 'multi', 4);
+  highlightOptions(num, correctAns, userStr, 'multi');
 }
 
 function checkTF(num, userAns, correctAns) {
@@ -344,6 +335,18 @@ function updateAnsweredStatus() {
   var pct = Math.round(answered / total * 100);
   document.getElementById('progressFill').style.width = pct + '%';
   document.getElementById('progressText').textContent = '已答 ' + answered + ' / ' + total + ' 题 · 正确 ' + correct + ' 题';
+}
+
+function getUserAnswerSingle(qNum) {
+  var sel = document.querySelector('.opt-label.selected[data-q="' + qNum + '"]');
+  return sel ? sel.dataset.val : '';
+}
+
+function getUserAnswerMulti(qNum) {
+  var selected = document.querySelectorAll('.opt-label.selected[data-q="' + qNum + '"]');
+  var ans = [];
+  selected.forEach(function(s) { ans.push(s.dataset.val); });
+  return ans.sort().join('');
 }
 
 // ========== 计时器 ==========
@@ -445,29 +448,26 @@ document.addEventListener('keydown', function(e) {
 
 // ========== 初始化 ==========
 function bindEvents() {
-  // 处理所有选项 label 的点击
-  document.querySelectorAll('.opt-label').forEach(function(label) {
-    label.addEventListener('click', function(e) {
-      e.preventDefault();
-      var input = this.querySelector('input');
-      if (!input) return;
+  document.querySelectorAll('.opt-label').forEach(function(opt) {
+    opt.addEventListener('click', function(e) {
+      var qNum = parseInt(this.dataset.q);
+      var val = this.dataset.val;
+      var type = this.dataset.type;
+      var card = document.getElementById('qCard-' + qNum);
+      var correctAns = card.dataset.answer;
 
-      var num = parseInt(this.id.split('-')[1]); // opt-NUM-LETTER → NUM
-      var correctAns = input.dataset.answer;
-
-      if (input.type === 'radio') {
-        if (input.checked) return; // radio 不能取消
-        // 取消同组
-        var name = input.name;
-        document.querySelectorAll('input[name="' + name + '"]').forEach(function(r) {
-          r.checked = false;
+      if (type === 'radio') {
+        // 取消同题所有选项
+        document.querySelectorAll('.opt-label[data-q="' + qNum + '"]').forEach(function(o) {
+          o.classList.remove('selected');
         });
-        input.checked = true;
-        // 直接调用检查函数
-        checkSingle(num, input.value, correctAns);
-      } else if (input.type === 'checkbox') {
-        input.checked = !input.checked;
-        checkMulti(num, correctAns);
+        // 选中当前
+        this.classList.add('selected');
+        checkSingle(qNum, val, correctAns);
+      } else if (type === 'checkbox') {
+        // 切换当前选项
+        this.classList.toggle('selected');
+        checkMulti(qNum, correctAns);
       }
     });
   });
