@@ -157,7 +157,7 @@ function renderSingle(q, num) {
   for (var i = 0; i < 4; i++) {
     if (q.o[i]) {
       h += '<label class="opt-label" id="opt-' + num + '-' + labels[i] + '">';
-      h += '<input type="radio" name="q' + num + '" value="' + labels[i] + '" onchange="checkSingle(' + num + ', \'' + labels[i] + '\', \'' + q.a + '\')">';
+      h += '<input type="radio" name="q' + num + '" value="' + labels[i] + '" data-answer="' + q.a + '">';
       h += '<span class="opt-letter">' + labels[i] + '</span>';
       h += '<span class="opt-text">' + escapeHtml(q.o[i]) + '</span>';
       h += '</label>';
@@ -177,7 +177,7 @@ function renderMulti(q, num) {
   for (var i = 0; i < 4; i++) {
     if (q.o[i]) {
       h += '<label class="opt-label" id="opt-' + num + '-' + labels[i] + '">';
-      h += '<input type="checkbox" name="q' + num + '" value="' + labels[i] + '" onchange="checkMulti(' + num + ', \'' + q.a + '\')">';
+      h += '<input type="checkbox" name="q' + num + '" value="' + labels[i] + '" data-answer="' + q.a + '">';
       h += '<span class="opt-letter">' + labels[i] + '</span>';
       h += '<span class="opt-text">' + escapeHtml(q.o[i]) + '</span>';
       h += '</label>';
@@ -445,26 +445,29 @@ document.addEventListener('keydown', function(e) {
 
 // ========== 初始化 ==========
 function bindEvents() {
-  // 手动处理 label 点击，确保隐藏的 checkbox/radio 能正常切换
+  // 处理所有选项 label 的点击
   document.querySelectorAll('.opt-label').forEach(function(label) {
     label.addEventListener('click', function(e) {
-      e.preventDefault(); // 阻止原生 label 行为，避免与手动逻辑冲突
+      e.preventDefault();
       var input = this.querySelector('input');
       if (!input) return;
+
+      var num = parseInt(this.id.split('-')[1]); // opt-NUM-LETTER → NUM
+      var correctAns = input.dataset.answer;
+
       if (input.type === 'radio') {
-        // 如果已选中则不做任何事（radio 不能取消选中）
-        if (input.checked) return;
-        // 取消同组其他 radio 的选中
+        if (input.checked) return; // radio 不能取消
+        // 取消同组
         var name = input.name;
         document.querySelectorAll('input[name="' + name + '"]').forEach(function(r) {
           r.checked = false;
         });
         input.checked = true;
-        input.dispatchEvent(new Event('change', { bubbles: true }));
+        // 直接调用检查函数
+        checkSingle(num, input.value, correctAns);
       } else if (input.type === 'checkbox') {
-        // 切换 checkbox 状态
         input.checked = !input.checked;
-        input.dispatchEvent(new Event('change', { bubbles: true }));
+        checkMulti(num, correctAns);
       }
     });
   });
