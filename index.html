@@ -444,7 +444,31 @@ document.addEventListener('keydown', function(e) {
 });
 
 // ========== 初始化 ==========
-function bindEvents() { /* 事件已内联在onchange/onclick中 */ }
+function bindEvents() {
+  // 手动处理 label 点击，确保隐藏的 checkbox/radio 能正常切换
+  document.querySelectorAll('.opt-label').forEach(function(label) {
+    label.addEventListener('click', function(e) {
+      e.preventDefault(); // 阻止原生 label 行为，避免与手动逻辑冲突
+      var input = this.querySelector('input');
+      if (!input) return;
+      if (input.type === 'radio') {
+        // 如果已选中则不做任何事（radio 不能取消选中）
+        if (input.checked) return;
+        // 取消同组其他 radio 的选中
+        var name = input.name;
+        document.querySelectorAll('input[name="' + name + '"]').forEach(function(r) {
+          r.checked = false;
+        });
+        input.checked = true;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      } else if (input.type === 'checkbox') {
+        // 切换 checkbox 状态
+        input.checked = !input.checked;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+  });
+}
 
 function init() {
   buildExam();
