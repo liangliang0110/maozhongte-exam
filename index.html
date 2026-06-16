@@ -181,7 +181,9 @@ function renderMulti(q, num) {
       h += '</div>';
     }
   }
-  h += '</div></div>';
+  h += '</div>';
+  h += '<button class="btn-confirm" data-q="' + num + '" style="display:none;margin-top:8px;padding:6px 20px;background:#b22222;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.9em" onclick="confirmMulti(' + num + ')">✓ 确认答案</button>';
+  h += '</div>';
   return h;
 }
 
@@ -264,6 +266,13 @@ function checkSingle(num, userAns, correctAns) {
   var isCorrect = userAns === correctAns;
   markCard(num, isCorrect, userAns, correctAns, 'single');
   highlightOptions(num, correctAns, userAns, 'single');
+}
+
+function confirmMulti(num) {
+  // 点击确认按钮后，再检查答案
+  var card = document.getElementById('qCard-' + num);
+  var correctAns = card.dataset.answer;
+  checkMulti(num, correctAns);
 }
 
 function checkMulti(num, correctAns) {
@@ -467,7 +476,22 @@ function bindEvents() {
       } else if (type === 'checkbox') {
         // 切换当前选项
         this.classList.toggle('selected');
-        checkMulti(qNum, correctAns);
+        // 显示/隐藏确认按钮
+        var hasSelection = document.querySelectorAll('.opt-label.selected[data-q="' + qNum + '"]').length > 0;
+        var confirmBtn = document.querySelector('.btn-confirm[data-q="' + qNum + '"]');
+        if (confirmBtn) confirmBtn.style.display = hasSelection ? 'inline-block' : 'none';
+        // 选了之后清掉之前的反馈，表示还没确认
+        card.classList.remove('correct', 'wrong');
+        card.dataset.answered = '0';
+        document.getElementById('qStatus-' + qNum).classList.remove('show');
+        document.getElementById('qFb-' + qNum).classList.remove('correct-fb', 'wrong-fb', 'show');
+        // 清除选项高亮
+        var labels = 'ABCD';
+        for (var i = 0; i < 4; i++) {
+          var o = document.querySelector('.opt-label[data-q="' + qNum + '"][data-val="' + labels[i] + '"]');
+          if (o) o.classList.remove('correct-opt', 'wrong-opt');
+        }
+        updateAnsweredStatus();
       }
     });
   });
